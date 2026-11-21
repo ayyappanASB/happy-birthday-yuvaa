@@ -20,6 +20,7 @@
    ============================================================ */
 
 import gsap from 'gsap';
+import { music } from './music.js';
 
 /* the pen-stroke plugin: a `drawn` 0..1 property for the underline */
 gsap.registerPlugin({
@@ -67,6 +68,7 @@ const barBot  = $('barBot');
 const uline   = $('uline').querySelector('.uline__path');
 const bloom   = $('bloom');
 const replay  = $('replay');
+const soundBtn = $('sound');
 
 /* phones held upright get their own framing (bigger bow, centred wish, bigger tree) */
 const isPortrait = () => W > 0 && H > 0 && W / H < 0.8;
@@ -812,6 +814,7 @@ function fire(){
   drawing = false;
   stopBeat();
   cue('release'); cue('whoosh');
+  startSong();
   filmTL = buildFilm(shotGeom());
   filmTL.play(0);
 }
@@ -836,6 +839,7 @@ function autoFire(){
 let movedPx = 0, dragId = null;
 hero.addEventListener('pointerdown', (e) => {
   if (played || drawing || (e.pointerType === 'mouse' && e.button !== 0)) return;
+  if (!isRecord) music.unlock();
   drawing = true; dragId = e.pointerId; movedPx = 0;
   try { hero.setPointerCapture(e.pointerId); } catch (_) {}
   startPX = e.clientX; startPY = e.clientY; startDraw = curDraw;
@@ -852,6 +856,7 @@ hero.addEventListener('pointermove', (e) => {
 function endDraw(e){
   if (!drawing || (e && e.pointerId !== dragId)) return;
   drawing = false; dragId = null;
+  if (!isRecord) music.unlock();     // iOS likes the unlock on touch-end too
   if (curDraw > maxDraw * 0.26) fire();
   else if (movedPx < 12 && e && e.type === 'pointerup') autoFire();
   else springBack();
@@ -860,7 +865,7 @@ hero.addEventListener('pointerup', endDraw);
 hero.addEventListener('pointercancel', endDraw);
 archery.addEventListener('keydown', (e) => {
   if (played) return;
-  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); autoFire(); }
+  if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); if (!isRecord) music.unlock(); autoFire(); }
 });
 
 if (window.matchMedia('(pointer: coarse)').matches) hint.textContent = 'pull back the bow \u2014 or just tap';
@@ -888,6 +893,30 @@ function armReplay(){
   replay.hidden = false;
   requestAnimationFrame(() => replay.classList.add('is-shown'));
 }
+
+/* --- the birthday song ------------------------------------------------------
+   It starts with the shot (the tap that fires is the gesture browsers need for
+   sound) and keeps looping softly; the note button mutes / unmutes it. */
+function showSoundBtn(){
+  if (!soundBtn.hidden) return;
+  soundBtn.hidden = false;
+  requestAnimationFrame(() => soundBtn.classList.add('is-shown'));
+}
+function syncSoundBtn(){
+  const on = music.started && !music.muted;
+  soundBtn.classList.toggle('is-muted', !on);
+  soundBtn.setAttribute('aria-pressed', String(on));
+  soundBtn.setAttribute('aria-label', on ? 'Mute the birthday song' : 'Play the birthday song');
+}
+function startSong(){
+  if (isRecord) return;
+  music.start(); syncSoundBtn(); showSoundBtn();
+}
+soundBtn.addEventListener('click', () => {
+  music.unlock();
+  if (!music.started) startSong();
+  else { music.setMuted(!music.muted); syncSoundBtn(); }
+});
 
 /* back to Act 1, ready to be drawn again */
 function resetAll(){
@@ -930,6 +959,7 @@ resize();
 
 if (reduceMotion){
   drawFinal();
+  if (!isRecord){ syncSoundBtn(); showSoundBtn(); }
 } else {
   buildMotes();
   document.fonts && document.fonts.ready.then(() => { refreshRig(); setDraw(0); });

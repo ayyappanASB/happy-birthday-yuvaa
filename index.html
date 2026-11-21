@@ -204,6 +204,19 @@
       <p class="wish__sub" id="wSub">here&rsquo;s to a year that blooms</p>
     </div>
 
+    <!-- Birthday song on/off (appears once the song starts). -->
+    <button class="sound" id="sound" type="button" aria-pressed="true" aria-label="Mute the birthday song" hidden>
+      <svg class="sound__on" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+        <path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="6.5" cy="18" r="2.6" fill="currentColor"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor"/>
+      </svg>
+      <svg class="sound__off" viewBox="0 0 24 24" aria-hidden="true" width="18" height="18">
+        <path d="M9 18V6l11-2v12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity=".45"/>
+        <circle cx="6.5" cy="18" r="2.6" fill="currentColor" opacity=".45"/><circle cx="17.5" cy="16" r="2.6" fill="currentColor" opacity=".45"/>
+        <path d="M3 3l18 18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+      </svg>
+    </button>
+
     <!-- Play the film again once it has settled. -->
     <button class="replay" id="replay" type="button" hidden>
       <svg viewBox="0 0 24 24" aria-hidden="true" width="15" height="15">

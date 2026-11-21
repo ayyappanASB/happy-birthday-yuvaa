@@ -506,6 +506,32 @@ body{
 }
 
 /* ============================================================
+   SOUND TOGGLE (the birthday song)
+   ============================================================ */
+.sound{
+  position:absolute; z-index:7;
+  top:calc(14px + env(safe-area-inset-top, 0px));
+  right:calc(14px + env(safe-area-inset-right, 0px));
+  width:42px; height:42px; border-radius:50%;
+  display:grid; place-items:center;
+  color:#a8455f; background:rgba(255,248,242,.74);
+  border:1px solid rgba(150,60,80,.18);
+  box-shadow:0 6px 20px -8px rgba(120,20,50,.45);
+  backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px);
+  cursor:pointer; touch-action:manipulation;
+  opacity:0; transform:scale(.8);
+  transition:opacity .5s ease, transform .5s var(--ease-out), background .3s ease;
+}
+.sound.is-shown{ opacity:1; transform:scale(1); }
+.sound:hover{ background:rgba(255,252,248,.94); }
+.sound:focus-visible{ outline:2px solid #fff; outline-offset:2px; }
+.sound .sound__off{ display:none; }
+.sound.is-muted .sound__on{ display:none; }
+.sound.is-muted .sound__off{ display:block; }
+.sound:not(.is-muted) .sound__on{ animation:notePulse 1.15s ease-in-out infinite; }
+@keyframes notePulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.12); } }
+
+/* ============================================================
    THE LENS — grain + vignette over every act
    ============================================================ */
 .grade{ position:absolute; inset:0; z-index:9; pointer-events:none; }
