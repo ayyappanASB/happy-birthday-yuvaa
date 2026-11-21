@@ -131,11 +131,53 @@ function applyVolume(fade = 0.6){
   master.gain.linearRampToValueAtTime(muted ? 0 : VOLUME, now + fade);
 }
 
+/* ---- iPhone: play through the silent switch --------------------------------
+   iOS treats Web Audio like a ringtone ("ambient"), so with the ring/silent
+   switch on silent you hear nothing. Two fixes:
+   1. Safari 17+: ask for a media ("playback") audio session directly.
+   2. Older iOS: keep a silent looping <audio> element playing — a playing
+      media element switches the whole page into the playback category. */
+try {
+  if (navigator.audioSession) navigator.audioSession.type = 'playback';
+} catch (_) {}
+
+let keepAlive = null;
+function silentWavURL(){
+  const rate = 8000, n = rate / 2;                     // half a second of silence
+  const buf = new ArrayBuffer(44 + n * 2), v = new DataView(buf);
+  const str = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); };
+  str(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); str(8, 'WAVE');
+  str(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true);
+  str(36, 'data'); v.setUint32(40, n * 2, true);
+  return URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+}
+function startKeepAlive(){
+  try {
+    if (!keepAlive){
+      keepAlive = document.createElement('audio');
+      keepAlive.src = silentWavURL();
+      keepAlive.loop = true;
+      keepAlive.preload = 'auto';
+      keepAlive.setAttribute('playsinline', '');
+      keepAlive.setAttribute('x-webkit-airplay', 'deny');
+    }
+    if (keepAlive.paused){ const p = keepAlive.play(); if (p && p.catch) p.catch(() => {}); }
+  } catch (_) {}
+}
+
+function resumeCtx(){
+  if (ctx && ctx.state !== 'running' && ctx.state !== 'closed'){
+    const p = ctx.resume(); if (p && p.catch) p.catch(() => {});
+  }
+}
+
 export const music = {
   /** call inside a user-gesture handler (tap / click / key) */
   unlock(){
+    startKeepAlive();
     if (!ensure()) return;
-    if (ctx.state !== 'running') ctx.resume();
+    resumeCtx();
     // iOS: play one silent sample inside the gesture to fully unlock output
     const b = ctx.createBuffer(1, 1, ctx.sampleRate);
     const s = ctx.createBufferSource(); s.buffer = b; s.connect(ctx.destination); s.start(0);
@@ -156,5 +198,16 @@ export const music = {
 /* pause with the tab so it never plays from a hidden page */
 document.addEventListener('visibilitychange', () => {
   if (!ctx) return;
-  if (document.hidden) ctx.suspend(); else if (playing) ctx.resume();
+  if (document.hidden){ ctx.suspend(); if (keepAlive) keepAlive.pause(); }
+  else if (playing){ resumeCtx(); startKeepAlive(); }
 });
+
+/* iOS can leave the context "suspended"/"interrupted" (a call, Siri, the
+   first touch not counting) — any later touch or click brings it back. */
+['touchend', 'click', 'keydown'].forEach((type) =>
+  document.addEventListener(type, () => {
+    // touchend/click are what iOS Safari reliably counts as a user gesture,
+    // so (re)unlock on every one — cheap once the context is running.
+    if (muted && playing) return;
+    music.unlock();
+  }, { passive: true, capture: true }));
